@@ -48,16 +48,17 @@ class ViT(nn.Module):
 
 
 class DINOHead(nn.Module):
-    def __init__(self, in_dim=384, hidden_dim=2048, out_dim=256):
+    def __init__(self, in_dim=384, hidden_dim=2048, out_dim=256, bottleneck_dim=256):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
-            nn.Linear(hidden_dim, out_dim)
+            nn.Linear(hidden_dim, bottleneck_dim)
         )
         self.apply(self._init_weights)
+        self.out = nn.Linear(hidden_dim, out_dim, bias=False)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -65,7 +66,8 @@ class DINOHead(nn.Module):
 
     def forward(self, x):
         x = self.mlp(x)
-        return F.normalize(x, dim=-1)
+        x = F.normalize(x, dim=-1)
+        return self.out(x)
 
     
 class DINOModel(nn.Module):

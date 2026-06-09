@@ -9,6 +9,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 from torchmetrics.functional import pairwise_cosine_similarity
+from torch.utils.tensorboard import SummaryWriter
 
 from utils import cosine_schedule, DINOLoss
 
@@ -91,6 +92,7 @@ def train_one_epoch(
         "cosine_sim": cos_metric.compute().item(),
         "lr": optimizer.param_groups[0]["lr"],
         "wd": optimizer.param_groups[0]["weight_decay"],
+        "momentum": momentum_schedule[global_it].item(),
     }
 
 
@@ -100,11 +102,13 @@ def train_dino(
     dino_loss: torch.nn.Module,
     data_loader: DataLoader,
     epochs: int,
+    save_path: str,
     base_lr: float = 5e-4,
     min_lr: float = 1e-6,
     weight_decay: float = 0.04,
     weight_decay_end: float = 0.4,
     teacher_momentum: float = 0.996,
+    writer: SummaryWriter = None,
     device: torch.device = torch.device("cuda")
 ) -> None:
     student.to(device)
@@ -162,6 +166,13 @@ def train_dino(
             f"LR: {stats['lr']:.2e}"
         )
 
+        if writer is not None:
+            writer.add_scalar('Loss', stats['loss'], epoch)
+            writer.add_scalar('CosSimilarity', stats['cosine_sim'], epoch)
+            writer.add_scalar('LearningRate', stats['lr'], epoch)
+            writer.add_scalar('weight_decay', stats['wd'], epoch)
+            writer.add_scalar('Params/Momentum', stats['momentum'], epoch)
+
         save_dict = {
             'student': student.state_dict(),
             'teacher': teacher.state_dict(),
@@ -169,6 +180,8 @@ def train_dino(
             'epoch': epoch + 1,
             'dino_loss': dino_loss.state_dict(),
         }
+        torch.save(save_dict, f"{save_path}/dino_{epoch}.pth")
+        
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))

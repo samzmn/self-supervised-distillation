@@ -4,6 +4,26 @@ import torch.nn.functional as F
 import numpy as np
 
 
+def cosine_schedule(
+    base_value: float,
+    final_value: float,
+    total_steps: int,
+    warmup_steps: int = 0
+) -> torch.Tensor:
+    values = torch.zeros(total_steps)
+
+    if warmup_steps > 0:
+        values[:warmup_steps] = torch.linspace(0, base_value, warmup_steps)
+
+    steps = total_steps - warmup_steps
+    t = torch.arange(steps)
+    cosine = final_value + 0.5 * (base_value - final_value) * (
+        1 + torch.cos(torch.pi * t / steps)
+    )
+    values[warmup_steps:] = cosine
+    return values
+
+
 # class DINOLoss(nn.Module):
 #     def __init__(self, out_dim=256, teacher_temp=0.04, student_temp=0.1, center_momentum=0.9):
 #         super().__init__()

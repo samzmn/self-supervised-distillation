@@ -69,10 +69,10 @@ class DINOHead(nn.Module):
 
     
 class DINOModel(nn.Module):
-    def __init__(self):
+    def __init__(self, embed_dim=384, img_size=32, patch_size=4, num_heads=6, depth=12, dropout=0., head_hidden_dim=2048, head_out_dim=256):
         super().__init__()
-        self.backbone = ViT()
-        self.head = DINOHead()
+        self.backbone = ViT(embed_dim, img_size, patch_size, num_heads, depth, dropout)
+        self.head = DINOHead(in_dim=embed_dim, hidden_dim=head_hidden_dim, out_dim=head_out_dim)
 
     def forward(self, x):
         return self.head(self.backbone(x))

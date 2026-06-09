@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from typing import Any, Dict, List, Sequence, Callable
 import visualize
 
+
 class DinoDataset(Dataset):
     def __init__(self, base_dataset):
         self.base_dataset = base_dataset
@@ -22,7 +23,7 @@ class DinoDataset(Dataset):
 class RandomGaussianBlur:
     def __init__(self, 
                  kernel_size: int | Sequence[int] = 3,
-                 sigma: int | float | Sequence[float] = (0.1, 2), 
+                 sigma: int | float | Sequence[float] = (0.1, 2.), 
                  p=1.0):
         self.kernel_size = kernel_size
         self.sigma = sigma
@@ -62,7 +63,7 @@ class DINOMultiCropDataset(Dataset):
             T.RandomResizedCrop([32], scale=(self.s, 1.0), interpolation=Image.BICUBIC),
             flip_and_color_jitter,
             RandomGaussianBlur(p=0.1),
-            # Solarization(0.2),
+            # T.RandomSolarize(0.2),
             base_transform,
         ])
         # transformation for the local small crops

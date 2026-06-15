@@ -44,6 +44,7 @@ def train_one_epoch(
     num_iters = len(data_loader)
     
     for it, crops in enumerate(data_loader):
+        print(f"\rIteration: {it}/{num_iters}", end="")
         # update weight decay and learning rate according to their schedule
         global_it = epoch * num_iters + it  # global training iteration
         for i, param_group in enumerate(optimizer.param_groups):
@@ -69,8 +70,6 @@ def train_one_epoch(
         loss.backward()
         optimizer.step()
 
-
-
         # EMA update for the teacher
         update_teacher(
             student,
@@ -87,6 +86,7 @@ def train_one_epoch(
             ).mean()
             cos_metric.update(cos)
 
+    print("\r", end="\n")
     return {
         "loss": loss_metric.compute().item(),
         "cosine_sim": cos_metric.compute().item(),
@@ -146,6 +146,7 @@ def train_dino(
     start_time = time.time()
     print("Starting DINO training !")
     for epoch in range(epochs):
+        epoch_time = time.time()
         stats = train_one_epoch(
             student,
             teacher,
@@ -165,6 +166,9 @@ def train_dino(
             f"CosSim: {stats['cosine_sim']:.4f} | "
             f"LR: {stats['lr']:.2e}"
         )
+        epoch_time = time.time() - epoch_time
+        epoch_time_str = str(datetime.timedelta(seconds=int(epoch_time)))
+        print('Epoch time {}'.format(epoch_time_str))
 
         if writer is not None:
             writer.add_scalar('Loss', stats['loss'], epoch)

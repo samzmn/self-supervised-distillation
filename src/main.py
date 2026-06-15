@@ -10,14 +10,9 @@ from modules import DINOModel
 from utils import DINOLoss
 from train import train_dino
 
-
-# Set device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
-
 # Hyperparameters
-BATCH_SIZE = 64
-EPOCHS = 100
+BATCH_SIZE = 8
+EPOCHS = 10
 LR = 0.0005
 MOMENTUM_TEACHER = 0.996  # EMA momentum for teacher
 TEMPERATURE = 0.1
@@ -27,6 +22,9 @@ NUM_CLASSES = 10  # Change to 100 for CIFAR-100
 DATASET = 'cifar10'  # or 'cifar100'
 
 def main():
+    # Set device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     save_path = "checkpoints"
     os.makedirs(save_path, exist_ok=True)
     writer = SummaryWriter(f'runs/dino_{DATASET}_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
@@ -38,7 +36,7 @@ def main():
                         head_hidden_dim=1024, head_out_dim=OUT_DIM).to(device)
     teacher = copy.deepcopy(student).to(device)
 
-    dino_loss = DINOLoss(OUT_DIM, ncrops=2+N_LOCAL_CROPS, nepochs=EPOCHS)
+    dino_loss = DINOLoss(OUT_DIM, ncrops=2+N_LOCAL_CROPS, nepochs=EPOCHS).to(device)
 
     train_dino(student, teacher, dino_loss, data_loader, EPOCHS, save_path,
                base_lr=LR, teacher_momentum=MOMENTUM_TEACHER, writer=writer, device=device)

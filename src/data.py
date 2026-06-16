@@ -149,7 +149,7 @@ def load_cifar(batch_size = 32, shuffle = True, normal=True,
 
     return data_loader
 
-if __name__=="__main__":
+def test():
     data_loader = load_cifar(batch_size = 16, shuffle = False, normal=False, 
                return_original=True, num_local_crops=6)
     n_cols = 1 + 2 + 6 
@@ -178,3 +178,36 @@ if __name__=="__main__":
             visualize.plot_image(x_batch[8][i])
         plt.show()
         break
+
+def test_train_data():
+    batch_size = 8
+    data_loader = load_cifar(batch_size, shuffle = True, normal=True, 
+                            return_original=False, num_local_crops=6)
+    print(len(data_loader))
+    n_cols = 2 + 6
+    n_rows = batch_size
+    plt.figure(figsize=(n_cols, n_rows))
+    for x_batch in data_loader:
+        for i in range(batch_size):
+            index = i * n_cols
+            plt.subplot(n_rows, n_cols, index + 1)
+            visualize.plot_image(x_batch[0][i])
+            plt.subplot(n_rows, n_cols, index + 2)
+            visualize.plot_image(x_batch[1][i])
+            plt.subplot(n_rows, n_cols, index + 3)
+            visualize.plot_image(x_batch[2][i])
+            plt.subplot(n_rows, n_cols, index + 4)
+            visualize.plot_image(x_batch[3][i])
+            plt.subplot(n_rows, n_cols, index + 5)
+            visualize.plot_image(x_batch[4][i])
+            plt.subplot(n_rows, n_cols, index + 6)
+            visualize.plot_image(x_batch[5][i])
+            plt.subplot(n_rows, n_cols, index + 7)
+            visualize.plot_image(x_batch[6][i])
+            plt.subplot(n_rows, n_cols, index + 8)
+            visualize.plot_image(x_batch[7][i])
+        plt.show()
+        break
+
+if __name__=="__main__":
+    test_train_data()

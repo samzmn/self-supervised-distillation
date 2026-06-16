@@ -45,6 +45,18 @@ class ViT(nn.Module):
         x = self.dropout(x)
         x = self.encoder(x)  # shape [B, 1 + L, E]
         return self.norm(x[:, 0])  # shape [B, E]
+    
+    def get_last_selfattention(self, x):
+        x = self.patch_embed(x)  # shape [B, L, E]
+        cls = self.cls_token.expand(x.size(0), -1, -1)  # shape [B, 1, E]
+        x = torch.cat([cls, x], dim=1)  # shape [B, 1 + L, E]
+        x = x + self.pos_embed
+        for i, blk in enumerate(self.encoder):
+            if i < len(self.encoder) - 1:
+                x = blk(x)
+            else:
+                # return attention of the last block
+                return blk(x, return_attention=True)
 
 
 class DINOHead(nn.Module):
@@ -58,7 +70,7 @@ class DINOHead(nn.Module):
             nn.Linear(hidden_dim, bottleneck_dim)
         )
         self.apply(self._init_weights)
-        self.out = nn.Linear(hidden_dim, out_dim, bias=False)
+        self.out = nn.Linear(bottleneck_dim, out_dim, bias=False)
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -69,12 +81,60 @@ class DINOHead(nn.Module):
         x = F.normalize(x, dim=-1)
         return self.out(x)
 
+
+class MultiCropWrapper(nn.Module):
+    def __init__(self, backbone, head):
+        super().__init__()
+        self.backbone = backbone
+        self.head = head
+
+    def forward(self, x):
+        if not isinstance(x, list):
+            x = [x]
+        # Group by input spatial size (height/width)
+        # Use shape[-1] for square images
+        sizes = torch.tensor([inp.shape[-1] for inp in x])
+        unique_sizes, counts = torch.unique_consecutive(sizes, return_counts=True)
+        idx_crops = torch.cumsum(counts, 0)
+        start_idx = 0
+        outputs = []
+        for end_idx in idx_crops:
+            # Concatenate all crops of this size
+            group = torch.cat(x[start_idx:end_idx])
+            out = self.backbone(group)   # output shape [B_group, embed_dim]
+            if isinstance(out, tuple):
+                out = out[0]              # for compatibility with XCiT
+            outputs.append(out)
+            start_idx = end_idx
+        # Concatenate outputs from all groups and pass through head
+        output = torch.cat(outputs)
+        return self.head(output)
+    
     
 class DINOModel(nn.Module):
     def __init__(self, embed_dim=384, img_size=32, patch_size=4, num_heads=6, depth=12, dropout=0., head_hidden_dim=2048, head_out_dim=256):
         super().__init__()
         self.backbone = ViT(embed_dim, img_size, patch_size, num_heads, depth, dropout)
         self.head = DINOHead(in_dim=embed_dim, hidden_dim=head_hidden_dim, out_dim=head_out_dim)
+        self.model = MultiCropWrapper(self.backbone, self.head)
 
     def forward(self, x):
-        return self.head(self.backbone(x))
+        return self.model(x)
+
+
+def test():
+    crops = 2 + 6
+    bs = 8
+    img_size = 32
+    embed_dim = 384
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data = [torch.rand([bs, 3, img_size, img_size]).to(device) for _ in range(crops)]
+    model = DINOModel(embed_dim, img_size, patch_size=4, num_heads=6, depth=12, dropout=0.,
+                        head_hidden_dim=1024, head_out_dim=1024).to(device)
+    out = model(data).detach()
+    print(out)
+    print(out.shape)
+
+if __name__ == "__main__":
+    test()
+    

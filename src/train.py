@@ -1,8 +1,5 @@
-import sys
-import math
 import time
 import datetime
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -11,7 +8,7 @@ from torchmetrics import MeanMetric
 from torchmetrics.functional import pairwise_cosine_similarity
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import cosine_schedule, DINOLoss
+from utils import cosine_schedule
 
 @torch.no_grad()
 def update_teacher(
@@ -184,7 +181,7 @@ def train_dino(
             'epoch': epoch + 1,
             'dino_loss': dino_loss.state_dict(),
         }
-        torch.save(save_dict, f"{save_path}/dino_{epoch}.pth")
+        torch.save(save_dict, f"{save_path}/dino_{epoch+1}.pth")
         
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
